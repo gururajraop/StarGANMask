@@ -120,7 +120,7 @@ class DataLoaderClass(data.Dataset):
             print('Processing training dataset')
             classes = os.listdir(os.path.join(self.image_dir, folder))
             for cls in classes:
-              label = [1] if cls == 'corrected' else [0]
+              label = [1] if cls == 'd65' else [0]
               files = os.listdir(os.path.join(self.image_dir, folder, cls))
               random.seed(1234)
               random.shuffle(files)
@@ -130,7 +130,7 @@ class DataLoaderClass(data.Dataset):
             print('Processing testing dataset')
             classes = os.listdir(os.path.join(self.image_dir, folder))
             for cls in classes:
-              label = [1] if cls == 'corrected' else [0]
+              label = [1] if cls == 'd65' else [0]
               files = os.listdir(os.path.join(self.image_dir, folder, cls))
               random.seed(1234)
               random.shuffle(files)
@@ -143,12 +143,12 @@ class DataLoaderClass(data.Dataset):
         """Return one image and its corresponding attribute label."""
         dataset = self.train_dataset if self.mode == 'train' else self.test_dataset
         filename, cls, label = dataset[index]
-        target_cls = 'original' if cls == 'corrected' else 'corrected'
+        target_cls = 'img' if cls == 'd65' else 'd65'
         image = Image.open(os.path.join(self.image_dir, self.mode, cls, filename))
-        filename = filename.replace('d65', 'img') if cls == 'corrected' else filename.replace('img', 'd65')
+        filename = filename.replace('d65', 'img') if cls == 'd65' else filename.replace('img', 'd65')
         target = Image.open(os.path.join(self.image_dir, self.mode, target_cls, filename))
         image, target = self.get_transforms(image, target)
-        if self.mode == 'train'
+        if self.mode == 'train':
           return image, target, torch.LongTensor(label)
         else:
           return image, target, torch.LongTensor(label), filename
@@ -156,6 +156,19 @@ class DataLoaderClass(data.Dataset):
     def __len__(self):
         """Return the number of images."""
         return self.num_images
+
+class newColour(ImageFolder):
+
+    def __init__(self, image_dir, transform):
+        print(image_dir)
+        super(newColour, self).__init__(image_dir, transform)
+#         ImageFolder.__init__(self)
+
+    def __getitem__(self, index):
+        superRets = super(newColour, self).__getitem__(index)
+        splits = self.imgs[index][0].split('/')
+        name = splits[-1].split('.')[0]
+        return superRets[0], superRets[1], name, splits
 
 
 def get_loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128, 
@@ -174,7 +187,10 @@ def get_loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=1
         dataset = CelebA(image_dir, attr_path, selected_attrs, transform, mode)
     elif dataset == 'RaFD':
         #dataset = ImageFolder(image_dir, transform)
-        dataset = DataLoaderClass(image_dir, transform, mode, crop_size, image_size)
+        if mode == 'train':
+          dataset = DataLoaderClass(image_dir, transform, mode, crop_size, image_size)
+        else:
+          dataset = newColour(image_dir, transform)
 
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batch_size,

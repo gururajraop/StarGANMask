@@ -609,3 +609,50 @@ class Solver(object):
                 result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i+1))
                 save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
                 print('Saved real and fake images into {}...'.format(result_path))
+
+    def test_separate(self):
+        """Translate images using StarGAN trained on a single dataset."""
+        # Load the trained generator.
+        self.restore_model(self.test_iters)
+
+        # Set data loader.
+        if self.dataset == 'CelebA':
+            data_loader = self.celeba_loader
+        elif self.dataset == 'RaFD':
+            data_loader = self.rafd_loader
+
+        with torch.no_grad():
+            for i, (x_real, c_org, filename, sp) in enumerate(data_loader):
+                splits = filename[0].split('_')
+                typer = splits[-1]
+                nums = splits[0]
+                classy = sp[-2][0]
+                if typer == 'img':
+                    # Prepare input images and target domain labels.
+                    x_real = x_real.to(self.device)
+                    c_trg_list = self.create_labels(c_org, self.c_dim, self.dataset, self.selected_attrs)
+
+                    # Translate images.
+                    x_fake_list = [x_real]
+                    x_mask_list = [x_real]
+                    for c_trg in c_trg_list:
+                        x, m = self.G(x_real, c_trg)
+                        x_fake_list.append(x)
+                        x_mask_list.append(m)
+
+                    # Save the translated images.
+                    for num, img in enumerate(x_fake_list):
+                        result_path = os.path.join(self.result_dir,
+                                                   '{}_{}-images.jpg'.format(nums,
+                                                                             num))
+                        save_image(self.denorm(img.data.cpu()), result_path, nrow=1, padding=0)
+                        result_path = os.path.join(self.result_dir,
+                                                   '{}_{}-masks.jpg'.format(nums,
+                                                                             num))
+                        save_image(self.denorm(x_mask_list[num].data.cpu()), result_path, nrow=1, padding=0)
+                    print('Saved real and fake images into {}...'.format(result_path))
+                    print('Input file', filename)
+
+                else:
+                    print('File not an input, skipped')
+

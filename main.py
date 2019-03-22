@@ -46,7 +46,8 @@ def main(config):
             solver.train_multi()
     elif config.mode == 'test':
         if config.dataset in ['CelebA', 'RaFD']:
-            solver.test()
+            #solver.test()
+            solver.test_separate()
         elif config.dataset in ['Both']:
             solver.test_multi()
 
