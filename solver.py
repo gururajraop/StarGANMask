@@ -537,30 +537,46 @@ class Solver(object):
         """Translate images using StarGAN trained on a single dataset."""
         # Load the trained generator.
         self.restore_model(self.test_iters)
+        print('Loaded the model from trained checkpoint')
         
         # Set data loader.
         if self.dataset == 'CelebA':
             data_loader = self.celeba_loader
         elif self.dataset == 'RaFD':
             data_loader = self.rafd_loader
-        
+       
         with torch.no_grad():
-            for i, (x_real, c_org) in enumerate(data_loader):
+            for i, (x_real, x_target, c_org, filename) in enumerate(data_loader):
+            #for i, (x_real, c_org) in enumerate(data_loader):
+
+                filename = filename[0].replace('_rgb_img.png', '')
 
                 # Prepare input images and target domain labels.
                 x_real = x_real.to(self.device)
+                # x_target = x_target.to(self.device)
                 c_trg_list = self.create_labels(c_org, self.c_dim, self.dataset, self.selected_attrs)
 
                 # Translate images.
-                x_fake_list = [x_real]
-                for c_trg in c_trg_list:
-                    x_fake_list.append(self.G(x_real, c_trg))
+                x_fake_list = []
+                x_real_list = []
+                x_mask_list = []
+                #for c_trg in c_trg_list:
+                x_fake, x_mask = self.G(x_real, c_trg_list[0])
+                x_mask_list.append(x_mask)
+                x_fake_list.append(x_fake)
+                x_real_list.append(x_real)
 
                 # Save the translated images.
                 x_concat = torch.cat(x_fake_list, dim=3)
-                result_path = os.path.join(self.result_dir, '{}-images.jpg'.format(i+1))
+                mask_concat = torch.cat(x_mask_list, dim=3)
+                real_concat = torch.cat(x_real_list, dim=3)
+                result_path = os.path.join(self.result_dir, '{}_real.jpg'.format(filename))
+                save_image(self.denorm(real_concat.data.cpu()), result_path, nrow=1, padding=0)
+                result_path = os.path.join(self.result_dir, '{}_fake.jpg'.format(filename))
                 save_image(self.denorm(x_concat.data.cpu()), result_path, nrow=1, padding=0)
-                print('Saved real and fake images into {}...'.format(result_path))
+                result_path = os.path.join(self.result_dir, '{}_mask.jpg'.format(filename))
+                save_image(self.denorm(mask_concat.data.cpu()), result_path, nrow=1, padding=0)
+                print('Saved real and fake images into {}...'.format(self.result_dir))
 
     def test_multi(self):
         """Translate images using StarGAN trained on multiple datasets."""

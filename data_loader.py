@@ -148,7 +148,10 @@ class DataLoaderClass(data.Dataset):
         filename = filename.replace('d65', 'img') if cls == 'corrected' else filename.replace('img', 'd65')
         target = Image.open(os.path.join(self.image_dir, self.mode, target_cls, filename))
         image, target = self.get_transforms(image, target)
-        return image, target, torch.LongTensor(label)
+        if self.mode == 'train'
+          return image, target, torch.LongTensor(label)
+        else:
+          return image, target, torch.LongTensor(label), filename
 
     def __len__(self):
         """Return the number of images."""
